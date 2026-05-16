@@ -1,0 +1,96 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email == "ymerejnotae@gmail.com";
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['email', 'role', 'createdAt'])
+        && data.keys().size() == 3
+        && data.email is string
+        && data.email.size() <= 200
+        && data.role in ['admin', 'user']
+        && data.createdAt is number;
+    }
+
+    function isValidRoom(data) {
+      return data.keys().hasAll(['name', 'allowedEmails', 'createdAt', 'createdBy'])
+        && data.keys().size() == 4
+        && data.name is string
+        && data.name.size() <= 200
+        && data.allowedEmails is list
+        && data.allowedEmails.size() <= 100
+        && data.createdAt is number
+        && data.createdBy is string;
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['text', 'senderId', 'senderEmail', 'roomId', 'allowedEmails', 'isAi', 'timestamp'])
+        && data.keys().size() == 7
+        && data.text is string
+        && data.text.size() <= 10000
+        && data.senderId is string
+        && data.senderEmail is string
+        && data.roomId is string
+        && data.allowedEmails is list
+        && data.allowedEmails.size() <= 100
+        && data.isAi is bool
+        && data.timestamp is number;
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && request.auth.uid == userId;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      allow create: if isSignedIn() 
+        && request.auth.uid == userId 
+        && isValidUser(incoming())
+        && incoming().email == request.auth.token.email;
+        
+      allow update: if isSignedIn() && request.auth.uid == userId
+        && isValidUser(incoming())
+        && incoming().createdAt == existing().createdAt
+        && incoming().email == existing().email
+        && incoming().role == existing().role;
+    }
+
+    match /rooms/{roomId} {
+      allow get: if isSignedIn() && (isAdmin() || request.auth.token.email in resource.data.allowedEmails);
+      allow list: if isSignedIn() && (isAdmin() || request.auth.token.email in resource.data.allowedEmails);
+
+      allow create: if isAdmin() && isValidRoom(incoming());
+      allow update: if isAdmin() && isValidRoom(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /rooms/{roomId}/messages/{messageId} {
+      allow get: if isSignedIn() && (isAdmin() || request.auth.token.email in resource.data.allowedEmails);
+      allow list: if isSignedIn() && (isAdmin() || request.auth.token.email in resource.data.allowedEmails);
+
+      allow create: if isSignedIn() 
+        && (isAdmin() || request.auth.token.email in incoming().allowedEmails)
+        && isValidMessage(incoming())
+        && incoming().roomId == roomId;
+        
+      // Messages are immutable in this schema
+      allow update, delete: if isAdmin();
+    }
+  }
+}

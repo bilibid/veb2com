@@ -1,0 +1,62 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile with role management",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["email", "role", "createdAt"]
+    },
+    "Room": {
+      "title": "Chat Room",
+      "description": "A group chat room instance containing allowed participants.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "allowedEmails": { 
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "createdAt": { "type": "number" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["name", "allowedEmails", "createdAt", "createdBy"]
+    },
+    "Message": {
+      "title": "Chat Message",
+      "description": "A message sent in a room. Denormalizes allowedEmails for strict security rules.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderEmail": { "type": "string" },
+        "roomId": { "type": "string" },
+        "allowedEmails": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "isAi": { "type": "boolean" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["text", "senderId", "senderEmail", "roomId", "allowedEmails", "isAi", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User documents"
+    },
+    "/rooms/{roomId}": {
+      "schema": { "$ref": "#/entities/Room" },
+      "description": "Chat rooms configuration"
+    },
+    "/rooms/{roomId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Messages within a specific room"
+    }
+  }
+}
