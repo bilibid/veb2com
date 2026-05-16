@@ -23,7 +23,7 @@ export default function Home() {
         const docSnap = await getDoc(userRef);
         
         let role = "user";
-        if (currentUser.email === "ymerejnotae@gmail.com") {
+        if (currentUser.email === "ymerejnotae@gmail.com" || currentUser.email === "jeremy@veb2.com") {
           role = "admin";
         }
 
@@ -64,7 +64,7 @@ export default function Home() {
     let password = passkey.trim();
 
     if (password === "Vv121212") {
-      email = "ymerejnotae@gmail.com";
+      email = "jeremy@veb2.com";
     } else if (password === "Longacre") {
       email = "doug@veb2.com";
     } else {
@@ -83,6 +83,8 @@ export default function Home() {
            console.error("Create error:", createError);
            if (createError.code === 'auth/operation-not-allowed') {
              setAuthError("Auth disabled. Enable Email/Password in Firebase Console -> Authentication -> Sign-in method.");
+           } else if (createError.code === 'auth/email-already-in-use') {
+             setAuthError("Invalid Passkey. An account with this clearance level exists, but the identity validation failed.");
            } else {
              setAuthError(createError.message || "Failed to create account.");
            }

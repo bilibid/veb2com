@@ -7,7 +7,6 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { collection, doc, getDoc, onSnapshot, query, setDoc, where } from "firebase/firestore";
 import { motion, AnimatePresence } from "motion/react";
 import { Send, Bot, User as UserIcon } from "lucide-react";
-import { GoogleGenAI, Content } from "@google/genai";
 
 interface Room {
   id: string;
@@ -141,10 +140,8 @@ export default function ChatRoom() {
   const handleAiResponse = async (latestText: string) => {
      if (!room) return;
      try {
-       const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY });
-       
        // Build full context
-       const contents: Content[] = messages.map(msg => ({
+       const contents: any[] = messages.map(msg => ({
           role: msg.isAi ? 'model' : 'user',
           parts: [{ text: `${msg.isAi ? '' : `${msg.senderEmail} said: `}${msg.text}` }]
        }));
@@ -155,17 +152,19 @@ export default function ChatRoom() {
           parts: [{ text: `${user!.email} said: ${latestText}` }]
        });
 
-       const response = await ai.models.generateContent({
-         model: "gemini-3.1-pro-preview",
-         contents,
-         config: {
-           systemInstruction: `You are @Gemini, an AI participant in a group chat with multiple humans. 
-You can see their email addresses in the prompt when they speak (e.g. 'user@gmail.com said: ').
-Your task is to communicate naturally, helpfully, and actively build personality profiles of the users based on their inputs to tailor your responses and predict their perspectives on topics discussed. Do not format your response with 'Gemini said:', just respond directly as yourself. Keep responses concise unless asked for detail.`
-         }
+       const res = await fetch("/api/gemini", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents }),
        });
 
+       if (!res.ok) {
+          throw new Error("Failed to fetch response from secure proxy");
+       }
+
+       const response = await res.json();
        const responseText = response.text;
+       
        if (responseText) {
           const aiMsgId = crypto.randomUUID();
           const aiTimestamp = Date.now();

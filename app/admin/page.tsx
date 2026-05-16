@@ -52,17 +52,37 @@ export default function AdminPanel() {
     const ensureDefaultRoom = async () => {
       const q = query(collection(db, "rooms"), where("name", "==", "Maybe???"));
       const snapshot = await getDocs(q);
+      const defaultUsers = ["jeremy@veb2.com", "doug@veb2.com"];
       if (snapshot.empty) {
         try {
           const roomId = crypto.randomUUID();
           await setDoc(doc(db, "rooms", roomId), {
             name: "Maybe???",
-            allowedEmails: ["ymerejnotae@gmail.com", "doug@veb2.com"],
+            allowedEmails: defaultUsers,
             createdAt: Date.now(),
             createdBy: user.uid
           });
         } catch (err) {
           console.error("Failed to auto-create room", err);
+        }
+      } else {
+        // Ensure standard participants exist inside the generic room 
+        // in case they haven't been added yet due to the bug
+        try {
+           const roomDoc = snapshot.docs[0];
+           const currentEmails = roomDoc.data().allowedEmails || [];
+           let needsUpdate = false;
+           for (const email of defaultUsers) {
+             if (!currentEmails.includes(email)) {
+               currentEmails.push(email);
+               needsUpdate = true;
+             }
+           }
+           if (needsUpdate) {
+             await setDoc(doc(db, "rooms", roomDoc.id), { allowedEmails: currentEmails }, { merge: true });
+           }
+        } catch (err) {
+           console.error("Failed to update generic room", err);
         }
       }
     };

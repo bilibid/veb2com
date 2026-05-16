@@ -18,7 +18,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && request.auth.token.email == "ymerejnotae@gmail.com";
+      return isSignedIn() && (request.auth.token.email == "ymerejnotae@gmail.com" || request.auth.token.email == "jeremy@veb2.com");
     }
 
     function isValidUser(data) {
