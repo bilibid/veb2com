@@ -1,11 +1,15 @@
 import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
 
-// We use the environment variable exclusively on the server to prevent exposure in the client bundle.
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
 export async function POST(req: NextRequest) {
   try {
+     const apiKey = process.env.GEMINI_API_KEY;
+     if (!apiKey) {
+       console.error("GEMINI_API_KEY is not set.");
+       return NextResponse.json({ error: "API key not configured." }, { status: 500 });
+     }
+     
+     const ai = new GoogleGenAI({ apiKey });
      const { contents } = await req.json();
      
      if (!contents || !Array.isArray(contents)) {
@@ -24,7 +28,7 @@ Your task is to communicate naturally, helpfully, and actively build personality
 
      return NextResponse.json({ text: response.text });
   } catch (error: any) {
-     console.error("Gemini API Error:", error);
-     return NextResponse.json({ error: error.message }, { status: 500 });
+     console.error("Gemini API Error:", error.message, error.stack);
+     return NextResponse.json({ error: error.message || "Unknown error" }, { status: 500 });
   }
 }

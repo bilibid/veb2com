@@ -242,8 +242,9 @@ export default function ChatRoom() {
 
                      {/* Message Body */}
                      <div className={`flex flex-col max-w-[80%] ${isMe ? 'items-end' : 'items-start'}`}>
-                       <span className="text-[10px] text-zinc-500 font-mono mb-1 px-1">
-                          {msg.isAi ? 'Gemini' : msg.senderEmail}
+                       <span className="text-[10px] text-zinc-500 font-mono mb-1 px-1 flex items-center gap-2">
+                          <span>{msg.isAi ? 'Gemini' : msg.senderEmail}</span>
+                          <span className="opacity-50">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                        </span>
                        <div className={`px-4 py-3 rounded-2xl ${
                          msg.isAi 

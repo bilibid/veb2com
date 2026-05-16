@@ -157,18 +157,6 @@ export default function Home() {
       </div>
 
       <nav className="flex justify-between items-start z-10 relative pointer-events-none opacity-0 h-10 w-full" aria-hidden="true" />
-
-      {/* Existing 'Coming Soon' content preserved but styled using theme micro-label class */}
-      <footer className="w-full flex justify-center items-end z-10 relative pointer-events-none">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1, duration: 1.2 }}
-          className="micro-label !opacity-100" // Override opacity to be more prominent like the old one, but keep theme styling
-        >
-          Coming Soon
-        </motion.div>
-      </footer>
     </main>
   );
 }
