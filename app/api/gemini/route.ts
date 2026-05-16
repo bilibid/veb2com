@@ -16,9 +16,21 @@ export async function POST(req: NextRequest) {
        return NextResponse.json({ error: "Invalid contents format." }, { status: 400 });
      }
      
+     // Gemini API requires that consecutive messages do not have the same role
+     const collapsedContents: any[] = [];
+     for (const msg of contents) {
+       const last = collapsedContents[collapsedContents.length - 1];
+       if (last && last.role === msg.role) {
+          last.parts.push({ text: "\n" });
+          last.parts.push(...msg.parts);
+       } else {
+          collapsedContents.push({ role: msg.role, parts: [...msg.parts] });
+       }
+     }
+     
      const response = await ai.models.generateContent({
        model: "gemini-3.1-pro-preview",
-       contents,
+       contents: collapsedContents,
        config: {
          systemInstruction: `You are @Gemini, an AI participant in a group chat with multiple humans. 
 You can see their email addresses in the prompt when they speak (e.g. 'user@gmail.com said: ').

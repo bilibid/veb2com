@@ -159,7 +159,8 @@ export default function ChatRoom() {
        });
 
        if (!res.ok) {
-          throw new Error("Failed to fetch response from secure proxy");
+          const errRes = await res.json().catch(() => ({}));
+          throw new Error(errRes.error || "Failed to fetch response from secure proxy");
        }
 
        const response = await res.json();
@@ -178,13 +179,13 @@ export default function ChatRoom() {
             timestamp: aiTimestamp
           });
        }
-     } catch (err) {
+     } catch (err: any) {
         console.error("AI Generation Error", err);
         // Error fallback message
         const errId = crypto.randomUUID();
         const errTimestamp = Date.now();
         await setDoc(doc(db, `rooms/${roomId}/messages`, errId), {
-            text: "*[System Error: Gemini connection interrupted]*",
+            text: `*[System Error: ${err?.message || 'Gemini connection interrupted'}]*`,
             senderId: "system_error",
             senderEmail: "system",
             roomId: roomId,
