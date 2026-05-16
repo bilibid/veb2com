@@ -36,6 +36,7 @@ export default function ChatRoom() {
   const [isGeminiToggled, setIsGeminiToggled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [isAiTyping, setIsAiTyping] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -126,7 +127,9 @@ export default function ChatRoom() {
 
       // 2. Determine if AI should reply
       if (textToSend.toLowerCase().startsWith("@gemini")) {
+         setIsAiTyping(true);
          await handleAiResponse(textToSend);
+         setIsAiTyping(false);
       }
 
     } catch (err) {
@@ -262,11 +265,24 @@ export default function ChatRoom() {
               })}
             </AnimatePresence>
             
-            {isSending && (
-              <div className="flex gap-4 flex-row">
-                 <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0 mt-1 animate-pulse" />
-                 <div className="px-4 py-3 bg-zinc-900 rounded-2xl rounded-tl-sm animate-pulse w-24 h-10" />
-              </div>
+            {isAiTyping && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex gap-4 flex-row"
+              >
+                 <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center flex-shrink-0 mt-1 animate-pulse">
+                    <Bot size={16} />
+                 </div>
+                 <div className="flex flex-col max-w-[80%] items-start">
+                    <span className="text-[10px] text-zinc-500 font-mono mb-1 px-1 flex items-center gap-2">
+                       <span>Gemini</span>
+                    </span>
+                    <div className="px-4 py-3 bg-zinc-900/80 border border-zinc-800/50 text-zinc-400 rounded-2xl rounded-tl-sm max-w-fit flex items-center gap-1 h-10 animate-pulse">
+                       <span className="text-sm italic">typing...</span>
+                    </div>
+                 </div>
+              </motion.div>
             )}
             <div ref={messagesEndRef} />
          </div>
