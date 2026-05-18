@@ -403,7 +403,15 @@ export default function ChatRoom() {
                                  : 'bg-zinc-900 text-zinc-200 rounded-tl-sm'
                            } ${isSelected ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-[#050505]' : ''}`}>
                               <div className="prose prose-invert prose-xs max-w-none">
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                <ReactMarkdown 
+                                  remarkPlugins={[remarkGfm]}
+                                  components={{
+                                    img: ({ node, ...props }) => {
+                                      if (typeof props.src !== 'string' || props.src.trim() === '') return null;
+                                      return <img src={props.src} alt={props.alt || ''} className="max-w-full rounded-md mt-2 mb-2 border border-zinc-700/50" />;
+                                    }
+                                  }}
+                                >
                                   {msg.text}
                                 </ReactMarkdown>
                               </div>
