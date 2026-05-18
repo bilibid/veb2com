@@ -9,7 +9,14 @@ export async function POST(req: NextRequest) {
        return NextResponse.json({ error: "API key not configured." }, { status: 500 });
      }
      
-     const ai = new GoogleGenAI({ apiKey });
+     const ai = new GoogleGenAI({ 
+       apiKey,
+       httpOptions: {
+         headers: {
+           'User-Agent': 'aistudio-build',
+         }
+       }
+     });
      const { contents } = await req.json();
      
      if (!contents || !Array.isArray(contents)) {

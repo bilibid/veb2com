@@ -6,7 +6,9 @@ import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { collection, doc, getDoc, onSnapshot, query, setDoc, where } from "firebase/firestore";
 import { motion, AnimatePresence } from "motion/react";
-import { Send, Bot, User as UserIcon } from "lucide-react";
+import { Send, Bot, User as UserIcon, Users, X, Info } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface Room {
   id: string;
@@ -37,6 +39,7 @@ export default function ChatRoom() {
   const [loading, setLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [isAiTyping, setIsAiTyping] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -205,65 +208,154 @@ export default function ChatRoom() {
     <main className="relative h-screen w-full bg-[#050505] text-white flex flex-col font-sans overflow-hidden">
       
       {/* Header */}
-      <header className="flex-shrink-0 h-16 border-b border-zinc-800/80 bg-black/50 backdrop-blur-md px-6 flex justify-between items-center z-10">
+      <header className="flex-shrink-0 h-16 border-b border-zinc-800/80 bg-black/50 backdrop-blur-md px-6 flex justify-between items-center z-30">
          <div className="flex items-center gap-4">
            <button onClick={() => router.back()} className="text-zinc-500 hover:text-white transition-colors">
               ← Back
            </button>
            <h1 className="text-lg font-medium">{room?.name}</h1>
-           <span className="px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-400 font-mono">
+           <button 
+             onClick={() => setShowSidebar(true)}
+             className="px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-400 font-mono hover:border-zinc-600 transition-colors flex items-center gap-1.5"
+           >
+             <Users size={10} />
              {room?.allowedEmails.length} Participants
-           </span>
+           </button>
+         </div>
+         <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setShowSidebar(!showSidebar)}
+              className="p-2 text-zinc-400 hover:text-white transition-colors"
+            >
+              <Info size={20} />
+            </button>
          </div>
       </header>
 
-      {/* Chat Area */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-32 z-10 scroll-smooth">
-         <div className="max-w-4xl mx-auto flex flex-col gap-6">
-            <div className="text-center py-8">
-               <p className="micro-label mb-2">END-TO-END VERIFIED</p>
-               <p className="text-xs text-zinc-500 font-mono">Welcome to &apos;{room?.name}&apos;.</p>
-               <p className="text-xs text-zinc-600 font-mono mt-1">Start messages with @Gemini to ping the AI.</p>
-            </div>
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Sidebar Overlay */}
+        <AnimatePresence>
+          {showSidebar && (
+            <>
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowSidebar(false)}
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+              />
+              <motion.aside 
+                initial={{ x: "100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                className="absolute right-0 top-0 h-full w-80 bg-zinc-950 border-l border-zinc-900 z-50 flex flex-col shadow-2xl overflow-hidden"
+              >
+                <div className="p-6 border-b border-zinc-900 flex justify-between items-center bg-black/20">
+                  <h2 className="text-sm font-mono text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                    <Users size={14} /> Room Registry
+                  </h2>
+                  <button onClick={() => setShowSidebar(false)} className="text-zinc-500 hover:text-white p-1">
+                    <X size={18} />
+                  </button>
+                </div>
 
-            <AnimatePresence initial={false}>
-              {messages.map((msg) => {
-                 const isMe = msg.senderId === user?.uid;
-                 return (
-                   <motion.div 
-                     key={msg.id}
-                     initial={{ opacity: 0, y: 10 }}
-                     animate={{ opacity: 1, y: 0 }}
-                     className={`flex gap-4 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}
-                   >
-                     {/* Avatar */}
-                     <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1
-                       ${msg.isAi ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 
-                         isMe ? 'bg-zinc-800 text-zinc-300' : 'bg-blue-900/40 text-blue-400 border border-blue-800/50'}`}
+                <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                  <section>
+                    <h3 className="text-[10px] font-mono text-zinc-600 uppercase tracking-tighter mb-4">Authorized Identities</h3>
+                    <div className="space-y-3">
+                      {room?.allowedEmails.map(email => (
+                        <div key={email} className="flex items-center gap-3">
+                          <div className="w-6 h-6 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-[10px] text-zinc-500 font-mono">
+                            {email[0].toUpperCase()}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-xs text-zinc-300 font-medium truncate max-w-[180px]">{email}</span>
+                            {email === user?.email && <span className="text-[9px] text-emerald-500 font-mono">YOU</span>}
+                          </div>
+                        </div>
+                      ))}
+                      <div className="flex items-center gap-3 py-2 border-t border-zinc-900 mt-4 opacity-50">
+                        <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center">
+                          <Bot size={12} />
+                        </div>
+                        <span className="text-xs text-zinc-400 font-medium">Gemini Pro 3.1</span>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section>
+                    <h3 className="text-[10px] font-mono text-zinc-600 uppercase tracking-tighter mb-4">Security Protocol</h3>
+                    <div className="p-3 bg-zinc-900/30 rounded border border-zinc-800/50">
+                      <p className="text-[10px] leading-relaxed text-zinc-500 font-mono italic">
+                        This channel is restricted to identified personnel. 
+                        Messages are cryptographically hashed and persistent within the veb2.com infrastructure.
+                      </p>
+                    </div>
+                  </section>
+                </div>
+
+                <div className="p-6 border-t border-zinc-900 bg-black/20">
+                   <p className="text-[9px] font-mono text-zinc-700 text-center uppercase tracking-widest">
+                     veb2 // node_{roomId.slice(0, 8)}
+                   </p>
+                </div>
+              </motion.aside>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* Chat Area */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-32 z-10 scroll-smooth custom-scrollbar">
+           <div className="max-w-4xl mx-auto flex flex-col gap-6">
+              <div className="text-center py-8">
+                 <p className="micro-label mb-2">END-TO-END VERIFIED</p>
+                 <p className="text-xs text-zinc-500 font-mono">Welcome to &apos;{room?.name}&apos;.</p>
+                 <p className="text-xs text-zinc-600 font-mono mt-1">Start messages with @Gemini to ping the AI.</p>
+              </div>
+
+              <AnimatePresence initial={false}>
+                {messages.map((msg) => {
+                   const isMe = msg.senderId === user?.uid;
+                   return (
+                     <motion.div 
+                       key={msg.id}
+                       initial={{ opacity: 0, y: 10 }}
+                       animate={{ opacity: 1, y: 0 }}
+                       className={`flex gap-4 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}
                      >
-                        {msg.isAi ? <Bot size={16} /> : <UserIcon size={16} />}
-                     </div>
-
-                     {/* Message Body */}
-                     <div className={`flex flex-col max-w-[80%] ${isMe ? 'items-end' : 'items-start'}`}>
-                       <span className="text-[10px] text-zinc-500 font-mono mb-1 px-1 flex items-center gap-2">
-                          <span>{msg.isAi ? 'Gemini' : msg.senderEmail}</span>
-                          <span className="opacity-50">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                       </span>
-                       <div className={`px-4 py-3 rounded-2xl ${
-                         msg.isAi 
-                           ? 'bg-zinc-900/80 border border-zinc-800/50 text-zinc-200 rounded-tl-sm' 
-                           : isMe
-                             ? 'bg-emerald-900/20 border border-emerald-900/50 text-emerald-50 rounded-tr-sm'
-                             : 'bg-zinc-900 text-zinc-200 rounded-tl-sm'
-                       }`}>
-                          <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.text}</p>
+                       {/* Avatar */}
+                       <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1
+                         ${msg.isAi ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 
+                           isMe ? 'bg-zinc-800 text-zinc-300' : 'bg-blue-900/40 text-blue-400 border border-blue-800/50'}`}
+                       >
+                          {msg.isAi ? <Bot size={16} /> : <UserIcon size={16} />}
                        </div>
-                     </div>
-                   </motion.div>
-                 );
-              })}
-            </AnimatePresence>
+
+                       {/* Message Body */}
+                       <div className={`flex flex-col max-w-[85%] ${isMe ? 'items-end' : 'items-start'}`}>
+                         <span className="text-[10px] text-zinc-500 font-mono mb-1 px-1 flex items-center gap-2">
+                            <span>{msg.isAi ? 'Gemini' : msg.senderEmail}</span>
+                            <span className="opacity-50">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                         </span>
+                         <div className={`px-4 py-3 rounded-2xl ${
+                           msg.isAi 
+                             ? 'bg-zinc-900/80 border border-zinc-800/50 text-zinc-200 rounded-tl-sm shadow-lg' 
+                             : isMe
+                               ? 'bg-indigo-600 text-white rounded-tr-sm shadow-md'
+                               : 'bg-zinc-900 text-zinc-200 rounded-tl-sm'
+                         }`}>
+                            <div className="prose prose-invert prose-xs max-w-none">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {msg.text}
+                              </ReactMarkdown>
+                            </div>
+                         </div>
+                       </div>
+                     </motion.div>
+                   );
+                })}
+              </AnimatePresence>
             
             {isAiTyping && (
               <motion.div 
@@ -287,6 +379,7 @@ export default function ChatRoom() {
             <div ref={messagesEndRef} />
          </div>
       </div>
+    </div>
 
       {/* Input Area */}
       <div className="absolute top-0 left-0 w-full h-full pointer-events-none grid-lines opacity-50 bg-gradient-to-t from-[#050505] via-transparent to-transparent pointer-events-none z-0"></div>
