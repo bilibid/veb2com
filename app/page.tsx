@@ -127,30 +127,8 @@ export default function Home() {
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 w-full">
-            {/* Left side: branding/copy */}
-            <div className="flex flex-col justify-center text-center md:text-left gap-6">
-              <h2 className="text-3xl md:text-4xl font-light tracking-tight text-white leading-tight">
-                Secure communications for <span className="text-emerald-400">authorized personnel</span>.
-              </h2>
-              <p className="text-zinc-400 font-mono text-sm leading-relaxed max-w-md">
-                Encrypted channels, persistent logs, and integrated intelligence. 
-                Access is restricted to validated identities only.
-              </p>
-              
-              <div className="flex flex-wrap gap-4 mt-4 justify-center md:justify-start">
-                <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900/50 border border-zinc-800 rounded-full">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest text-white/80">Quantum Safe</span>
-                </div>
-                <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900/50 border border-zinc-800 rounded-full">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                  <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest text-white/80">AI Augmented</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Right side: Login */}
+          <div className="flex flex-col gap-12 w-full max-w-sm">
+            {/* Login */}
             <div className="bg-zinc-950/50 border border-zinc-800 p-8 py-10 backdrop-blur-xl relative">
               <div className="absolute top-0 right-0 p-3">
                 <p className="text-[8px] font-mono text-zinc-700 tracking-[0.3em] uppercase">Auth_Module_v2.04</p>
@@ -158,7 +136,7 @@ export default function Home() {
               
               <form onSubmit={handleAuth} className="flex flex-col items-center gap-6 w-full">
                 <div className="w-full">
-                  <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest block mb-3 text-center md:text-left">Enter System Passkey</label>
+                  <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest block mb-3 text-center">Enter System Passkey</label>
                   {isInitializing || isAuthenticating ? (
                      <div className="w-full h-14 bg-black border border-zinc-900 flex items-center justify-center">
                        <p className="micro-label animate-pulse">

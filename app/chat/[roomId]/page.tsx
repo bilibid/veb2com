@@ -4,9 +4,9 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { collection, doc, getDoc, onSnapshot, query, setDoc, where } from "firebase/firestore";
+import { collection, doc, getDoc, onSnapshot, query, setDoc, where, deleteDoc } from "firebase/firestore";
 import { motion, AnimatePresence } from "motion/react";
-import { Send, Bot, User as UserIcon, Users, X, Info } from "lucide-react";
+import { Send, Bot, User as UserIcon, Users, X, Info, Image as ImageIcon, Sparkles, CheckSquare, Trash2, Edit } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -40,6 +40,8 @@ export default function ChatRoom() {
   const [isSending, setIsSending] = useState(false);
   const [isAiTyping, setIsAiTyping] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [selectedMessages, setSelectedMessages] = useState<string[]>([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -100,6 +102,28 @@ export default function ChatRoom() {
 
     return () => unsubscribe();
   }, [roomId, user, loading, room]);
+
+  const handleDeleteSelected = async () => {
+    if (selectedMessages.length === 0) return;
+    const idsToDelete = [...selectedMessages];
+    setSelectedMessages([]);
+    setIsSelectionMode(false);
+    try {
+      for (const id of idsToDelete) {
+         await deleteDoc(doc(db, `rooms/${roomId}/messages`, id));
+      }
+    } catch (err) {
+      console.error("Failed to delete", err);
+      alert("Failed to delete messages");
+    }
+  };
+
+  const toggleMessageSelection = (msgId: string, isMyMessage: boolean) => {
+    if (!isMyMessage) return;
+    setSelectedMessages(prev => 
+       prev.includes(msgId) ? prev.filter(id => id !== msgId) : [...prev, msgId]
+    );
+  };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -223,6 +247,25 @@ export default function ChatRoom() {
            </button>
          </div>
          <div className="flex items-center gap-2">
+            {isSelectionMode && selectedMessages.length > 0 && (
+              <button 
+                onClick={handleDeleteSelected}
+                className="px-3 py-1.5 bg-red-500/20 text-red-500 hover:bg-red-500/30 text-xs font-bold rounded flex items-center gap-2 transition-colors mr-2"
+              >
+                <Trash2 size={14} />
+                Delete ({selectedMessages.length})
+              </button>
+            )}
+            <button
+               onClick={() => {
+                 setIsSelectionMode(!isSelectionMode);
+                 setSelectedMessages([]);
+               }}
+               className={`p-2 transition-colors ${isSelectionMode ? 'text-indigo-400' : 'text-zinc-400 hover:text-white'}`}
+               title="Select Messages"
+            >
+               <CheckSquare size={20} />
+            </button>
             <button 
               onClick={() => setShowSidebar(!showSidebar)}
               className="p-2 text-zinc-400 hover:text-white transition-colors"
@@ -317,39 +360,54 @@ export default function ChatRoom() {
               <AnimatePresence initial={false}>
                 {messages.map((msg) => {
                    const isMe = msg.senderId === user?.uid;
+                   const isSelected = selectedMessages.includes(msg.id);
                    return (
                      <motion.div 
                        key={msg.id}
                        initial={{ opacity: 0, y: 10 }}
                        animate={{ opacity: 1, y: 0 }}
-                       className={`flex gap-4 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}
+                       className={`flex items-center gap-2 w-full ${isMe ? 'flex-row-reverse' : 'flex-row'}`}
                      >
-                       {/* Avatar */}
-                       <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1
-                         ${msg.isAi ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 
-                           isMe ? 'bg-zinc-800 text-zinc-300' : 'bg-blue-900/40 text-blue-400 border border-blue-800/50'}`}
-                       >
-                          {msg.isAi ? <Bot size={16} /> : <UserIcon size={16} />}
-                       </div>
+                       {isSelectionMode && isMe && (
+                         <div 
+                           className="px-2 h-full flex flex-col justify-center cursor-pointer flex-shrink-0"
+                           onClick={() => toggleMessageSelection(msg.id, isMe)}
+                         >
+                           <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-indigo-500 border-indigo-500' : 'border-zinc-700 bg-zinc-900'}`}>
+                             {isSelected && <X size={14} className="text-white" />}
+                           </div>
+                         </div>
+                       )}
+                       
+                       <div className={`flex gap-4 flex-1 ${isMe ? 'flex-row-reverse' : 'flex-row'} ${isSelectionMode && isMe ? 'cursor-pointer' : ''}`}
+                            onClick={() => isSelectionMode && toggleMessageSelection(msg.id, isMe)}>
+                         {/* Avatar */}
+                         <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1
+                           ${msg.isAi ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 
+                             isMe ? 'bg-zinc-800 text-zinc-300' : 'bg-blue-900/40 text-blue-400 border border-blue-800/50'}`}
+                         >
+                            {msg.isAi ? <Bot size={16} /> : <UserIcon size={16} />}
+                         </div>
 
-                       {/* Message Body */}
-                       <div className={`flex flex-col max-w-[85%] ${isMe ? 'items-end' : 'items-start'}`}>
-                         <span className="text-[10px] text-zinc-500 font-mono mb-1 px-1 flex items-center gap-2">
-                            <span>{msg.isAi ? 'Gemini' : msg.senderEmail}</span>
-                            <span className="opacity-50">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                         </span>
-                         <div className={`px-4 py-3 rounded-2xl ${
-                           msg.isAi 
-                             ? 'bg-zinc-900/80 border border-zinc-800/50 text-zinc-200 rounded-tl-sm shadow-lg' 
-                             : isMe
-                               ? 'bg-indigo-600 text-white rounded-tr-sm shadow-md'
-                               : 'bg-zinc-900 text-zinc-200 rounded-tl-sm'
-                         }`}>
-                            <div className="prose prose-invert prose-xs max-w-none">
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {msg.text}
-                              </ReactMarkdown>
-                            </div>
+                         {/* Message Body */}
+                         <div className={`flex flex-col max-w-[85%] ${isMe ? 'items-end' : 'items-start'}`}>
+                           <span className="text-[10px] text-zinc-500 font-mono mb-1 px-1 flex items-center gap-2">
+                              <span>{msg.isAi ? 'Gemini' : msg.senderEmail}</span>
+                              <span className="opacity-50">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                           </span>
+                           <div className={`px-4 py-3 rounded-2xl ${
+                             msg.isAi 
+                               ? 'bg-zinc-900/80 border border-zinc-800/50 text-zinc-200 rounded-tl-sm shadow-lg' 
+                               : isMe
+                                 ? 'bg-indigo-600 text-white rounded-tr-sm shadow-md'
+                                 : 'bg-zinc-900 text-zinc-200 rounded-tl-sm'
+                           } ${isSelected ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-[#050505]' : ''}`}>
+                              <div className="prose prose-invert prose-xs max-w-none">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                  {msg.text}
+                                </ReactMarkdown>
+                              </div>
+                           </div>
                          </div>
                        </div>
                      </motion.div>
@@ -387,17 +445,37 @@ export default function ChatRoom() {
       <div className="absolute bottom-0 w-full bg-gradient-to-t from-[#050505] via-[#050505] to-transparent pt-12 pb-6 px-4 sm:px-6 z-20">
          <div className="max-w-3xl mx-auto w-full flex flex-col gap-2">
             
-            <div className="flex items-center">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
               <button 
                 onClick={() => setIsGeminiToggled(!isGeminiToggled)}
-                className={`px-3 py-1.5 text-xs font-mono rounded-md border transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono rounded-full border transition-all flex-shrink-0 ${
                   isGeminiToggled 
                     ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50 shadow-[0_0_10px_rgba(99,102,241,0.2)]' 
-                    : 'bg-black text-zinc-500 border-zinc-800 hover:text-zinc-300'
+                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
                 }`}
               >
+                <Sparkles size={12} />
                 @Gemini
               </button>
+              
+              {isGeminiToggled && (
+                <>
+                  <button 
+                    onClick={() => setInputText((prev) => prev ? prev + "Create an image of " : "Create an image of ")}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-all flex-shrink-0"
+                  >
+                    <ImageIcon size={12} />
+                    Create Image
+                  </button>
+                  <button 
+                    onClick={() => setInputText((prev) => prev ? prev + "Write email " : "Write email ")}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-all flex-shrink-0"
+                  >
+                    <Edit size={12} />
+                    Write email
+                  </button>
+                </>
+              )}
             </div>
 
             <form onSubmit={handleSendMessage} className="relative flex items-end w-full group">
